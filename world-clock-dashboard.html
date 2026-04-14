@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>World Clock Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/3.4.4/luxon.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #ddeef8;
+    min-height: 100vh;
+    padding: 30px 16px 60px;
+    color: #1a2533;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 28px;
+    font-weight: 700;
+    color: #1a2533;
+    margin-bottom: 6px;
+  }
+
+  .subtitle {
+    text-align: center;
+    font-size: 14px;
+    color: #4a6a85;
+    margin-bottom: 28px;
+  }
+
+  /* Add city card */
+  .add-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 22px 28px;
+    max-width: 620px;
+    margin: 0 auto 32px;
+    box-shadow: 0 2px 12px rgba(30,90,150,0.07);
+  }
+
+  .section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #4a6a85;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 14px;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  input[type="text"] {
+    flex: 1;
+    padding: 13px 14px;
+    border: 1.5px solid #c8dcea;
+    border-radius: 8px;
+    font-size: 15px;
+    color: #1a2533;
+    background: #f4f9fd;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input[type="text"]::placeholder { color: #90afc5; }
+  input[type="text"]:focus {
+    border-color: #3b8fd4;
+    background: #fff;
+  }
+
+  .btn-add {
+    padding: 13px 22px;
+    border: none;
+    border-radius: 8px;
+    background: #3b8fd4;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.18s, transform 0.1s;
+    letter-spacing: 0.04em;
+  }
+  .btn-add:hover { background: #2d7abf; }
+  .btn-add:active { transform: scale(0.97); }
+
+  .error-msg {
+    color: #e05555;
+    font-size: 13px;
+    margin-top: 8px;
+    display: none;
+  }
+
+  .city-count {
+    font-size: 12px;
+    color: #90afc5;
+    margin-top: 8px;
+    text-align: right;
+  }
+
+  /* Clock grid */
+  #clockGrid {
+    max-width: 1120px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+
+  @media (max-width: 900px) {
+    #clockGrid { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 660px) {
+    #clockGrid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 420px) {
+    #clockGrid { grid-template-columns: 1fr; }
+  }
+
+  .clock-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px 16px 14px;
+    box-shadow: 0 2px 12px rgba(30,90,150,0.07);
+    position: relative;
+    border-top: 4px solid #3b8fd4;
+    transition: box-shadow 0.2s;
+    min-width: 0;
+  }
+
+  .clock-card:hover {
+    box-shadow: 0 4px 18px rgba(30,90,150,0.13);
+  }
+
+  .clock-card.night {
+    border-top-color: #1a2533;
+  }
+
+  .clock-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .city-name {
+    font-size: 15px;
+    font-weight: 800;
+    color: #1a2533;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 130px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  .tz-badge {
+    font-size: 10px;
+    font-weight: 600;
+    background: #e8f4fd;
+    color: #2d7abf;
+    border-radius: 20px;
+    padding: 2px 8px;
+    margin-top: 3px;
+    display: inline-block;
+  }
+
+  .clock-card.night .tz-badge {
+    background: #eef0f3;
+    color: #4a6a85;
+  }
+
+  .btn-remove {
+    background: none;
+    border: none;
+    color: #c8dcea;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    transition: color 0.15s;
+    flex-shrink: 0;
+    margin-left: 4px;
+  }
+  .btn-remove:hover { color: #e05555; }
+
+  .clock-time {
+    font-size: 32px;
+    font-weight: 700;
+    color: #3b8fd4;
+    letter-spacing: -1px;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .clock-card.night .clock-time {
+    color: #1a2533;
+  }
+
+  .clock-seconds {
+    font-size: 16px;
+    font-weight: 400;
+    color: #90afc5;
+    letter-spacing: 0;
+  }
+
+  .clock-date {
+    font-size: 11px;
+    color: #7a9ab5;
+    margin-bottom: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .clock-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 8px;
+    border-top: 1px solid #f0f6fb;
+  }
+
+  .day-night {
+    font-size: 11px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .day-night.day { color: #e8a020; }
+  .day-night.night { color: #4a6a85; }
+
+  .utc-offset {
+    font-size: 10px;
+    color: #90afc5;
+    font-weight: 500;
+  }
+
+  /* Empty state */
+  #emptyState {
+    text-align: center;
+    padding: 40px 20px;
+    color: #90afc5;
+    font-size: 14px;
+    display: none;
+  }
+
+  #emptyState .empty-icon {
+    font-size: 40px;
+    margin-bottom: 10px;
+  }
+
+  /* Quick-add chips */
+  .quick-add {
+    margin-top: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .quick-label {
+    font-size: 12px;
+    color: #90afc5;
+    font-weight: 500;
+  }
+
+  .chip {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1.5px solid #c8dcea;
+    background: #f4f9fd;
+    color: #4a6a85;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .chip:hover {
+    background: #e8f4fd;
+    border-color: #3b8fd4;
+    color: #2d7abf;
+  }
+
+  @media (max-width: 500px) {
+    h1 { font-size: 22px; }
+    .input-row { flex-direction: column; }
+    .btn-add { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<h1>World Clock Dashboard</h1>
+<p class="subtitle">Add up to 10 cities and view all their live times in one clean grid</p>
+
+<div class="add-card">
+  <div class="section-title">Add a City</div>
+  <div class="input-row">
+    <input type="text" id="cityInput" placeholder="e.g. London, Tokyo, New York, Dubai..." onkeydown="if(event.key==='Enter') addCity()">
+    <button class="btn-add" onclick="addCity()">+ ADD</button>
+  </div>
+  <div class="error-msg" id="errorMsg">City not recognised. Try a major city name.</div>
+  <div class="city-count" id="cityCount">0 / 10 cities added</div>
+
+  <div class="quick-add">
+    <span class="quick-label">Quick add:</span>
+    <span class="chip" onclick="quickAdd('London')">London</span>
+    <span class="chip" onclick="quickAdd('New York')">New York</span>
+    <span class="chip" onclick="quickAdd('Dubai')">Dubai</span>
+    <span class="chip" onclick="quickAdd('Tokyo')">Tokyo</span>
+    <span class="chip" onclick="quickAdd('Sydney')">Sydney</span>
+    <span class="chip" onclick="quickAdd('Mumbai')">Mumbai</span>
+    <span class="chip" onclick="quickAdd('Singapore')">Singapore</span>
+    <span class="chip" onclick="quickAdd('Paris')">Paris</span>
+  </div>
+</div>
+
+<div id="clockGrid"></div>
+<div id="emptyState">
+  <div class="empty-icon">🌍</div>
+  Add a city above to start your world clock dashboard
+</div>
+
+<script>
+const { DateTime } = luxon;
+
+const cityZones = {
+  "london": "Europe/London",
+  "manchester": "Europe/London",
+  "birmingham": "Europe/London",
+  "edinburgh": "Europe/London",
+  "glasgow": "Europe/London",
+  "dublin": "Europe/Dublin",
+  "paris": "Europe/Paris",
+  "berlin": "Europe/Berlin",
+  "munich": "Europe/Berlin",
+  "madrid": "Europe/Madrid",
+  "barcelona": "Europe/Madrid",
+  "rome": "Europe/Rome",
+  "milan": "Europe/Rome",
+  "amsterdam": "Europe/Amsterdam",
+  "brussels": "Europe/Brussels",
+  "zurich": "Europe/Zurich",
+  "vienna": "Europe/Vienna",
+  "stockholm": "Europe/Stockholm",
+  "oslo": "Europe/Oslo",
+  "copenhagen": "Europe/Copenhagen",
+  "helsinki": "Europe/Helsinki",
+  "warsaw": "Europe/Warsaw",
+  "prague": "Europe/Prague",
+  "budapest": "Europe/Budapest",
+  "athens": "Europe/Athens",
+  "istanbul": "Europe/Istanbul",
+  "moscow": "Europe/Moscow",
+  "dubai": "Asia/Dubai",
+  "abu dhabi": "Asia/Dubai",
+  "riyadh": "Asia/Riyadh",
+  "doha": "Asia/Qatar",
+  "kuwait": "Asia/Kuwait",
+  "cairo": "Africa/Cairo",
+  "nairobi": "Africa/Nairobi",
+  "lagos": "Africa/Lagos",
+  "johannesburg": "Africa/Johannesburg",
+  "cape town": "Africa/Johannesburg",
+  "mumbai": "Asia/Kolkata",
+  "delhi": "Asia/Kolkata",
+  "new delhi": "Asia/Kolkata",
+  "bangalore": "Asia/Kolkata",
+  "kolkata": "Asia/Kolkata",
+  "chennai": "Asia/Kolkata",
+  "hyderabad": "Asia/Kolkata",
+  "ahmedabad": "Asia/Kolkata",
+  "pune": "Asia/Kolkata",
+  "karachi": "Asia/Karachi",
+  "islamabad": "Asia/Karachi",
+  "lahore": "Asia/Karachi",
+  "dhaka": "Asia/Dhaka",
+  "colombo": "Asia/Colombo",
+  "kathmandu": "Asia/Kathmandu",
+  "kabul": "Asia/Kabul",
+  "tehran": "Asia/Tehran",
+  "tashkent": "Asia/Tashkent",
+  "almaty": "Asia/Almaty",
+  "bangkok": "Asia/Bangkok",
+  "jakarta": "Asia/Jakarta",
+  "ho chi minh": "Asia/Ho_Chi_Minh",
+  "hanoi": "Asia/Bangkok",
+  "kuala lumpur": "Asia/Kuala_Lumpur",
+  "singapore": "Asia/Singapore",
+  "manila": "Asia/Manila",
+  "hong kong": "Asia/Hong_Kong",
+  "taipei": "Asia/Taipei",
+  "beijing": "Asia/Shanghai",
+  "shanghai": "Asia/Shanghai",
+  "chengdu": "Asia/Shanghai",
+  "guangzhou": "Asia/Shanghai",
+  "shenzhen": "Asia/Shanghai",
+  "seoul": "Asia/Seoul",
+  "busan": "Asia/Seoul",
+  "tokyo": "Asia/Tokyo",
+  "osaka": "Asia/Tokyo",
+  "sydney": "Australia/Sydney",
+  "melbourne": "Australia/Melbourne",
+  "brisbane": "Australia/Brisbane",
+  "perth": "Australia/Perth",
+  "adelaide": "Australia/Adelaide",
+  "auckland": "Pacific/Auckland",
+  "wellington": "Pacific/Auckland",
+  "new york": "America/New_York",
+  "nyc": "America/New_York",
+  "boston": "America/New_York",
+  "washington": "America/New_York",
+  "miami": "America/New_York",
+  "atlanta": "America/New_York",
+  "toronto": "America/Toronto",
+  "montreal": "America/Toronto",
+  "chicago": "America/Chicago",
+  "houston": "America/Chicago",
+  "dallas": "America/Chicago",
+  "denver": "America/Denver",
+  "phoenix": "America/Phoenix",
+  "los angeles": "America/Los_Angeles",
+  "san francisco": "America/Los_Angeles",
+  "seattle": "America/Los_Angeles",
+  "las vegas": "America/Los_Angeles",
+  "vancouver": "America/Vancouver",
+  "calgary": "America/Edmonton",
+  "mexico city": "America/Mexico_City",
+  "sao paulo": "America/Sao_Paulo",
+  "rio de janeiro": "America/Sao_Paulo",
+  "buenos aires": "America/Argentina/Buenos_Aires",
+  "bogota": "America/Bogota",
+  "lima": "America/Lima",
+  "santiago": "America/Santiago",
+  "caracas": "America/Caracas",
+  "accra": "Africa/Accra",
+  "casablanca": "Africa/Casablanca",
+  "addis ababa": "Africa/Addis_Ababa",
+  "dar es salaam": "Africa/Dar_es_Salaam",
+  "kampala": "Africa/Kampala",
+  "lusaka": "Africa/Lusaka",
+  "harare": "Africa/Harare",
+};
+
+// Store city list
+let cities = [];
+
+function getZone(city) {
+  return cityZones[city.trim().toLowerCase()] || null;
+}
+
+function capitalize(str) {
+  return str.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+function isNightTime(hour) {
+  return hour < 6 || hour >= 20;
+}
+
+function addCity() {
+  const input = document.getElementById('cityInput');
+  const errorMsg = document.getElementById('errorMsg');
+  const val = input.value.trim();
+
+  errorMsg.style.display = 'none';
+
+  if (!val) return;
+
+  if (cities.length >= 10) {
+    alert('Maximum 10 cities reached. Remove a city to add another.');
+    return;
+  }
+
+  const zone = getZone(val);
+  if (!zone) {
+    errorMsg.style.display = 'block';
+    return;
+  }
+
+  const key = val.toLowerCase();
+  if (cities.find(c => c.key === key)) {
+    input.value = '';
+    return;
+  }
+
+  cities.push({ name: capitalize(val), key, zone });
+  input.value = '';
+  renderCards();
+  updateCount();
+}
+
+function quickAdd(city) {
+  document.getElementById('cityInput').value = city;
+  addCity();
+}
+
+function removeCity(key) {
+  cities = cities.filter(c => c.key !== key);
+  renderCards();
+  updateCount();
+}
+
+function updateCount() {
+  document.getElementById('cityCount').textContent = `${cities.length} / 10 cities added`;
+}
+
+function renderCards() {
+  const grid = document.getElementById('clockGrid');
+  const empty = document.getElementById('emptyState');
+
+  if (cities.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+
+  empty.style.display = 'none';
+  grid.innerHTML = cities.map(c => `
+    <div class="clock-card" id="card-${c.key.replace(/\s/g,'-')}">
+      <div class="clock-top">
+        <div>
+          <div class="city-name">${c.name}</div>
+          <span class="tz-badge" id="tz-${c.key.replace(/\s/g,'-')}"></span>
+        </div>
+        <button class="btn-remove" onclick="removeCity('${c.key}')" title="Remove">&times;</button>
+      </div>
+      <div class="clock-time" id="time-${c.key.replace(/\s/g,'-')}"></div>
+      <div class="clock-date" id="date-${c.key.replace(/\s/g,'-')}"></div>
+      <div class="clock-footer">
+        <div class="day-night" id="dn-${c.key.replace(/\s/g,'-')}"></div>
+        <div class="utc-offset" id="off-${c.key.replace(/\s/g,'-')}"></div>
+      </div>
+    </div>
+  `).join('');
+
+  tick();
+}
+
+function tick() {
+  cities.forEach(c => {
+    const id = c.key.replace(/\s/g, '-');
+    const now = luxon.DateTime.now().setZone(c.zone);
+    const hour = now.hour;
+    const night = isNightTime(hour);
+
+    const card = document.getElementById(`card-${id}`);
+    if (!card) return;
+
+    // Day/night class
+    card.className = 'clock-card' + (night ? ' night' : '');
+
+    // Time: HH:MM<seconds>
+    document.getElementById(`time-${id}`).innerHTML =
+      `${now.toFormat('HH:mm')}<span class="clock-seconds">:${now.toFormat('ss')}</span>`;
+
+    // Date
+    document.getElementById(`date-${id}`).textContent =
+      now.toFormat('cccc, dd MMM yyyy');
+
+    // TZ badge
+    document.getElementById(`tz-${id}`).textContent = now.offsetNameShort;
+
+    // Day/night indicator
+    const dnEl = document.getElementById(`dn-${id}`);
+    if (night) {
+      dnEl.className = 'day-night night';
+      dnEl.innerHTML = '🌙 Night';
+    } else {
+      dnEl.className = 'day-night day';
+      dnEl.innerHTML = '☀️ Day';
+    }
+
+    // UTC offset
+    const offsetMin = now.offset;
+    const sign = offsetMin >= 0 ? '+' : '-';
+    const absMin = Math.abs(offsetMin);
+    const oh = String(Math.floor(absMin / 60)).padStart(2, '0');
+    const om = String(absMin % 60).padStart(2, '0');
+    document.getElementById(`off-${id}`).textContent = `UTC${sign}${oh}:${om}`;
+  });
+}
+
+// Start live tick
+setInterval(tick, 1000);
+
+// Show empty state on load
+document.getElementById('emptyState').style.display = 'block';
+</script>
+</body>
+</html>
