@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Astrology Birth Chart Calculator — Free Natal Chart</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/3.4.4/luxon.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Arial, sans-serif; background: #ddeef8; min-height: 100vh; padding: 30px 16px 60px; color: #1a2533; }
+h1 { text-align: center; font-size: 28px; font-weight: 700; color: #1a2533; margin-bottom: 6px; }
+.subtitle { text-align: center; font-size: 14px; color: #4a6a85; margin-bottom: 28px; }
+.card { background: #fff; border-radius: 12px; padding: 28px; max-width: 640px; margin: 0 auto 28px; box-shadow: 0 2px 12px rgba(30,90,150,0.07); }
+.section-title { font-size: 13px; font-weight: 600; color: #4a6a85; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 14px; }
+.field-group { margin-bottom: 18px; }
+.field-label { font-size: 14px; font-weight: 600; color: #1a2533; margin-bottom: 8px; display: block; }
+input[type="text"], input[type="date"], input[type="time"] { width: 100%; padding: 13px 14px; border: 1.5px solid #c8dcea; border-radius: 8px; font-size: 15px; color: #1a2533; background: #f4f9fd; outline: none; transition: border-color 0.2s; }
+input::placeholder { color: #90afc5; }
+input:focus { border-color: #3b8fd4; background: #fff; }
+.row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 0.06em; background: #3b8fd4; color: #fff; transition: background 0.18s, transform 0.1s; }
+.btn:hover { background: #2d7abf; }
+.btn:active { transform: scale(0.98); }
+.error-msg { color: #e05555; font-size: 13px; margin-top: 6px; display: none; }
+.divider { height: 1px; background: #e4eff7; margin: 18px 0; }
+#results { max-width: 1060px; margin: 0 auto; display: none; }
+.big-three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; max-width: 640px; margin: 0 auto 24px; }
+.big-three-item { background: #fff; border-radius: 12px; padding: 16px; text-align: center; border-top: 4px solid #3b8fd4; box-shadow: 0 2px 12px rgba(30,90,150,0.07); }
+.big-three-label { font-size: 11px; font-weight: 700; color: #4a6a85; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+.big-three-value { font-size: 20px; font-weight: 800; color: #1a2533; }
+.big-three-deg { font-size: 12px; color: #7a9ab5; margin-top: 3px; }
+.result-grid { display: grid; grid-template-columns: 480px 1fr; gap: 20px; align-items: start; }
+.chart-wrap { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(30,90,150,0.07); padding: 10px; }
+.panel-header { background: #1a2533; color: #fff; border-radius: 12px 12px 0 0; padding: 12px 18px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+.panel-body { background: #fff; border-radius: 0 0 12px 12px; padding: 14px 16px; }
+.planet-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.planet-table th { text-align: left; padding: 7px 8px; font-size: 10px; font-weight: 700; color: #4a6a85; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid #e4eff7; }
+.planet-table td { padding: 7px 8px; border-bottom: 1px solid #f0f6fb; }
+.planet-table tr:last-child td { border-bottom: none; }
+.sign-pill { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 20px; background: #e8f4fd; color: #2d7abf; white-space: nowrap; }
+.retro { font-size: 10px; color: #cc4444; font-weight: 700; margin-left: 3px; }
+.asp-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid #f0f6fb; font-size: 12px; }
+.asp-row:last-child { border-bottom: none; }
+.asp-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.asp-orb { color: #90afc5; font-size: 11px; margin-left: auto; }
+@media (max-width: 820px) { .result-grid { grid-template-columns: 1fr; } .chart-wrap svg { width: 100%; } }
+@media (max-width: 500px) { .row-2 { grid-template-columns: 1fr; } h1 { font-size: 22px; } .big-three { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<h1>Astrology Birth Chart Calculator</h1>
+<p class="subtitle">Enter your birth details to generate your free natal chart</p>
+
+<div class="card">
+  <div class="section-title">Your Birth Details</div>
+  <div class="field-group">
+    <label class="field-label">Name <span style="font-weight:400;color:#90afc5">(optional)</span></label>
+    <input type="text" id="pName" placeholder="e.g. Jane Smith">
+  </div>
+  <div class="field-group">
+    <label class="field-label">Birth Date</label>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:8px">
+      <select id="bDay" style="padding:13px 10px;border:1.5px solid #c8dcea;border-radius:8px;font-size:15px;color:#1a2533;background:#f4f9fd;outline:none"></select>
+      <select id="bMonth" style="padding:13px 10px;border:1.5px solid #c8dcea;border-radius:8px;font-size:15px;color:#1a2533;background:#f4f9fd;outline:none"></select>
+      <input type="number" id="bYear" placeholder="Year e.g. 1990" min="1800" max="2099" style="padding:13px 14px;border:1.5px solid #c8dcea;border-radius:8px;font-size:15px;color:#1a2533;background:#f4f9fd;outline:none;width:100%">
+    </div>
+  </div>
+  <div class="field-group">
+    <label class="field-label">Birth Time <span style="font-weight:400;color:#90afc5">(24h format)</span></label>
+    <input type="time" id="bTime">
+  </div>
+  <div class="field-group">
+    <label class="field-label">Birth City</label>
+    <input type="text" id="bCity" placeholder="e.g. London, Mumbai, New York, Tokyo...">
+    <div class="error-msg" id="cityErr">City not recognised. Try another major city name.</div>
+  </div>
+  <button class="btn" onclick="calculate()">GENERATE MY BIRTH CHART</button>
+</div>
+
+<div id="results">
+  <div class="big-three" id="bigThree"></div>
+  <div class="result-grid">
+    <div class="chart-wrap">
+      <svg id="chartSVG" width="460" height="460" viewBox="0 0 460 460"></svg>
+    </div>
+    <div>
+      <div class="panel-header">Planet Positions</div>
+      <div class="panel-body"><table class="planet-table" id="ptable"></table></div>
+      <div style="height:16px"></div>
+      <div class="panel-header" style="border-radius:12px 12px 0 0">Major Aspects</div>
+      <div class="panel-body" id="aspDiv"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const {DateTime} = luxon;
+const D2R = Math.PI/180, R2D = 180/Math.PI;
+function norm(d){return((d%360)+360)%360;}
+
+// ── CITY DB ──────────────────────────────────────────────────────────
+const CITIES={
+  "london":{z:"Europe/London",la:51.508,lo:-0.128},"manchester":{z:"Europe/London",la:53.483,lo:-2.244},
+  "birmingham":{z:"Europe/London",la:52.486,lo:-1.890},"edinburgh":{z:"Europe/London",la:55.953,lo:-3.189},
+  "glasgow":{z:"Europe/London",la:55.865,lo:-4.258},"dublin":{z:"Europe/Dublin",la:53.344,lo:-6.267},
+  "paris":{z:"Europe/Paris",la:48.857,lo:2.352},"berlin":{z:"Europe/Berlin",la:52.524,lo:13.410},
+  "munich":{z:"Europe/Berlin",la:48.135,lo:11.582},"madrid":{z:"Europe/Madrid",la:40.417,lo:-3.703},
+  "barcelona":{z:"Europe/Madrid",la:41.387,lo:2.170},"rome":{z:"Europe/Rome",la:41.902,lo:12.496},
+  "milan":{z:"Europe/Rome",la:45.465,lo:9.188},"amsterdam":{z:"Europe/Amsterdam",la:52.374,lo:4.890},
+  "brussels":{z:"Europe/Brussels",la:50.850,lo:4.352},"zurich":{z:"Europe/Zurich",la:47.378,lo:8.540},
+  "vienna":{z:"Europe/Vienna",la:48.210,lo:16.370},"stockholm":{z:"Europe/Stockholm",la:59.330,lo:18.068},
+  "oslo":{z:"Europe/Oslo",la:59.913,lo:10.740},"copenhagen":{z:"Europe/Copenhagen",la:55.676,lo:12.568},
+  "helsinki":{z:"Europe/Helsinki",la:60.169,lo:24.939},"warsaw":{z:"Europe/Warsaw",la:52.230,lo:21.012},
+  "prague":{z:"Europe/Prague",la:50.088,lo:14.421},"budapest":{z:"Europe/Budapest",la:47.498,lo:19.040},
+  "athens":{z:"Europe/Athens",la:37.979,lo:23.716},"istanbul":{z:"Europe/Istanbul",la:41.013,lo:28.948},
+  "moscow":{z:"Europe/Moscow",la:55.751,lo:37.617},"dubai":{z:"Asia/Dubai",la:25.205,lo:55.270},
+  "abu dhabi":{z:"Asia/Dubai",la:24.466,lo:54.366},"riyadh":{z:"Asia/Riyadh",la:24.688,lo:46.722},
+  "doha":{z:"Asia/Qatar",la:25.286,lo:51.533},"kuwait":{z:"Asia/Kuwait",la:29.375,lo:47.977},
+  "cairo":{z:"Africa/Cairo",la:30.033,lo:31.233},"nairobi":{z:"Africa/Nairobi",la:-1.286,lo:36.820},
+  "lagos":{z:"Africa/Lagos",la:6.524,lo:3.379},"johannesburg":{z:"Africa/Johannesburg",la:-26.204,lo:28.047},
+  "cape town":{z:"Africa/Johannesburg",la:-33.925,lo:18.424},"mumbai":{z:"Asia/Kolkata",la:19.076,lo:72.878},
+  "delhi":{z:"Asia/Kolkata",la:28.644,lo:77.216},"new delhi":{z:"Asia/Kolkata",la:28.644,lo:77.216},
+  "bangalore":{z:"Asia/Kolkata",la:12.972,lo:77.595},"kolkata":{z:"Asia/Kolkata",la:22.573,lo:88.364},
+  "chennai":{z:"Asia/Kolkata",la:13.083,lo:80.270},"hyderabad":{z:"Asia/Kolkata",la:17.360,lo:78.474},
+  "pune":{z:"Asia/Kolkata",la:18.520,lo:73.856},"ahmedabad":{z:"Asia/Kolkata",la:23.023,lo:72.572},
+  "karachi":{z:"Asia/Karachi",la:24.861,lo:67.011},"islamabad":{z:"Asia/Karachi",la:33.729,lo:73.094},
+  "lahore":{z:"Asia/Karachi",la:31.558,lo:74.357},"dhaka":{z:"Asia/Dhaka",la:23.810,lo:90.412},
+  "colombo":{z:"Asia/Colombo",la:6.932,lo:79.848},"kathmandu":{z:"Asia/Kathmandu",la:27.717,lo:85.318},
+  "tehran":{z:"Asia/Tehran",la:35.694,lo:51.422},"bangkok":{z:"Asia/Bangkok",la:13.754,lo:100.501},
+  "jakarta":{z:"Asia/Jakarta",la:-6.200,lo:106.816},"kuala lumpur":{z:"Asia/Kuala_Lumpur",la:3.140,lo:101.687},
+  "singapore":{z:"Asia/Singapore",la:1.352,lo:103.820},"manila":{z:"Asia/Manila",la:14.600,lo:120.984},
+  "hong kong":{z:"Asia/Hong_Kong",la:22.302,lo:114.177},"taipei":{z:"Asia/Taipei",la:25.047,lo:121.517},
+  "beijing":{z:"Asia/Shanghai",la:39.906,lo:116.391},"shanghai":{z:"Asia/Shanghai",la:31.228,lo:121.474},
+  "shenzhen":{z:"Asia/Shanghai",la:22.543,lo:114.058},"guangzhou":{z:"Asia/Shanghai",la:23.116,lo:113.251},
+  "seoul":{z:"Asia/Seoul",la:37.532,lo:127.024},"busan":{z:"Asia/Seoul",la:35.180,lo:129.075},
+  "tokyo":{z:"Asia/Tokyo",la:35.690,lo:139.692},"osaka":{z:"Asia/Tokyo",la:34.694,lo:135.502},
+  "sydney":{z:"Australia/Sydney",la:-33.869,lo:151.209},"melbourne":{z:"Australia/Melbourne",la:-37.814,lo:144.963},
+  "brisbane":{z:"Australia/Brisbane",la:-27.468,lo:153.028},"perth":{z:"Australia/Perth",la:-31.952,lo:115.861},
+  "adelaide":{z:"Australia/Adelaide",la:-34.929,lo:138.601},"auckland":{z:"Pacific/Auckland",la:-36.867,lo:174.770},
+  "new york":{z:"America/New_York",la:40.713,lo:-74.006},"nyc":{z:"America/New_York",la:40.713,lo:-74.006},
+  "boston":{z:"America/New_York",la:42.360,lo:-71.058},"washington":{z:"America/New_York",la:38.895,lo:-77.037},
+  "miami":{z:"America/New_York",la:25.762,lo:-80.191},"atlanta":{z:"America/New_York",la:33.749,lo:-84.388},
+  "toronto":{z:"America/Toronto",la:43.651,lo:-79.347},"montreal":{z:"America/Toronto",la:45.508,lo:-73.587},
+  "chicago":{z:"America/Chicago",la:41.878,lo:-87.630},"houston":{z:"America/Chicago",la:29.760,lo:-95.370},
+  "dallas":{z:"America/Chicago",la:32.776,lo:-96.797},"denver":{z:"America/Denver",la:39.739,lo:-104.984},
+  "phoenix":{z:"America/Phoenix",la:33.449,lo:-112.074},"los angeles":{z:"America/Los_Angeles",la:34.052,lo:-118.244},
+  "san francisco":{z:"America/Los_Angeles",la:37.773,lo:-122.417},"seattle":{z:"America/Los_Angeles",la:47.608,lo:-122.335},
+  "las vegas":{z:"America/Los_Angeles",la:36.175,lo:-115.137},"vancouver":{z:"America/Vancouver",la:49.247,lo:-123.117},
+  "calgary":{z:"America/Edmonton",la:51.045,lo:-114.072},"mexico city":{z:"America/Mexico_City",la:19.433,lo:-99.133},
+  "sao paulo":{z:"America/Sao_Paulo",la:-23.549,lo:-46.620},"rio de janeiro":{z:"America/Sao_Paulo",la:-22.906,lo:-43.173},
+  "buenos aires":{z:"America/Argentina/Buenos_Aires",la:-34.614,lo:-58.438},
+  "bogota":{z:"America/Bogota",la:4.711,lo:-74.073},"lima":{z:"America/Lima",la:-12.046,lo:-77.043},
+  "santiago":{z:"America/Santiago",la:-33.457,lo:-70.648},"casablanca":{z:"Africa/Casablanca",la:33.573,lo:-7.590},
+  "addis ababa":{z:"Africa/Addis_Ababa",la:9.025,lo:38.747},"accra":{z:"Africa/Accra",la:5.556,lo:-0.197}
+};
+
+// ── ZODIAC & PLANET DATA ──────────────────────────────────────────
+const SIGNS=[
+  {n:'Aries',s:'♈',e:'Fire'},{n:'Taurus',s:'♉',e:'Earth'},{n:'Gemini',s:'♊',e:'Air'},
+  {n:'Cancer',s:'♋',e:'Water'},{n:'Leo',s:'♌',e:'Fire'},{n:'Virgo',s:'♍',e:'Earth'},
+  {n:'Libra',s:'♎',e:'Air'},{n:'Scorpio',s:'♏',e:'Water'},{n:'Sagittarius',s:'♐',e:'Fire'},
+  {n:'Capricorn',s:'♑',e:'Earth'},{n:'Aquarius',s:'♒',e:'Air'},{n:'Pisces',s:'♓',e:'Water'}
+];
+const EL_COL={Fire:'#fff0ee',Earth:'#f0f7ee',Air:'#fffce8',Water:'#eef4ff'};
+const EL_STK={Fire:'#ffb3a8',Earth:'#a8d4a8',Air:'#ffe099',Water:'#a8c4f4'};
+
+const PDATA=[
+  {n:'Sun',   s:'☉',c:'#e8a020'},{n:'Moon',    s:'☽',c:'#7a9ab5'},
+  {n:'Mercury',s:'☿',c:'#5a8faa'},{n:'Venus',   s:'♀',c:'#d4729a'},
+  {n:'Mars',  s:'♂',c:'#cc4444'},{n:'Jupiter', s:'♃',c:'#8844cc'},
+  {n:'Saturn',s:'♄',c:'#6677aa'},{n:'Uranus',  s:'♅',c:'#44aacc'},
+  {n:'Neptune',s:'♆',c:'#4466cc'},{n:'Pluto',  s:'♇',c:'#884444'},
+  {n:'NNode', s:'☊',c:'#888888'}
+];
+
+const ASPECTS=[
+  {n:'Conjunction',d:0,  orb:8,c:'#888888'},
+  {n:'Sextile',    d:60, orb:6,c:'#4a8f4a'},
+  {n:'Square',     d:90, orb:8,c:'#cc4444'},
+  {n:'Trine',      d:120,orb:8,c:'#4466cc'},
+  {n:'Opposition', d:180,orb:8,c:'#cc7722'}
+];
+
+// ── ASTRONOMY ────────────────────────────────────────────────────────
+function jd(Y,M,D,h){
+  if(M<=2){Y--;M+=12;}
+  const A=Math.floor(Y/100),B=2-A+Math.floor(A/4);
+  return Math.floor(365.25*(Y+4716))+Math.floor(30.6001*(M+1))+D+B-1524.5+h/24;
+}
+
+function sunPos(T){
+  const L0=norm(280.46646+36000.76983*T+0.0003032*T*T);
+  const M=norm(357.52911+35999.05029*T-0.0001537*T*T);
+  const Mr=M*D2R;
+  const C=(1.914602-0.004817*T-0.000014*T*T)*Math.sin(Mr)
+         +(0.019993-0.000101*T)*Math.sin(2*Mr)+0.000289*Math.sin(3*Mr);
+  const Om=norm(125.04-1934.136*T);
+  return{lon:norm(L0+C-0.00569-0.00478*Math.sin(Om*D2R)),retro:false};
+}
+
+function moonPos(T){
+  const L0=norm(218.3164477+481267.88123421*T-0.0015786*T*T);
+  const M=norm(357.52772+35999.05034*T);
+  const Mp=norm(134.96298+477198.867398*T+0.0086972*T*T);
+  const D=norm(297.85036+445267.11480*T-0.0019142*T*T);
+  const F=norm(93.27191+483202.017538*T-0.0036825*T*T);
+  const Mr=M*D2R,Mpr=Mp*D2R,Dr=D*D2R,Fr=F*D2R;
+  const E=1-0.002516*T-0.0000074*T*T;
+  const SL=(6288774*Math.sin(Mpr)+1274027*Math.sin(2*Dr-Mpr)+658314*Math.sin(2*Dr)
+    +213618*Math.sin(2*Mpr)-185116*E*Math.sin(Mr)-114332*Math.sin(2*Fr)
+    +58793*Math.sin(2*Dr-2*Mpr)+57066*E*Math.sin(2*Dr-Mr-Mpr)
+    +53322*Math.sin(2*Dr+Mpr)+45758*E*Math.sin(2*Dr-Mr)+41775*Math.sin(Mpr-Mr)
+    -34720*Math.sin(Dr)-30403*Math.sin(Mpr+Mr)+15327*Math.sin(2*Dr-2*Fr)
+    -12528*Math.sin(Mpr+2*Fr)+10980*Math.sin(Mpr-2*Fr)+10675*Math.sin(4*Dr-Mpr)
+    +10034*Math.sin(3*Mpr)+8548*Math.sin(4*Dr-2*Mpr)
+    -7888*E*Math.sin(2*Dr+Mr-Mpr)-6766*E*Math.sin(2*Dr+Mr)
+    -5163*Math.sin(Dr-Mpr)+4987*E*Math.sin(Dr+Mr)
+    +4036*E*Math.sin(2*Dr-Mr+Mpr)+3994*Math.sin(2*Dr+2*Mpr)
+    +3861*Math.sin(4*Dr)+3665*Math.sin(2*Dr-3*Mpr))*1e-6;
+  return{lon:norm(L0+SL),retro:false};
+}
+
+function kepler(M_deg,e){
+  let E=M_deg*D2R; const Mr=E;
+  for(let i=0;i<15;i++){const dE=(Mr-E+e*Math.sin(E))/(1-e*Math.cos(E));E+=dE;if(Math.abs(dE)<1e-10)break;}
+  return E;
+}
+
+// Orbital elements [L0,dL,a,e0,de,i0,di,O0,dO,w0,dw]
+const OE={
+  Mercury:[252.250906,149474.0722491,0.387098310,0.20563175, 2.0407e-5, 7.004986,-5.9516e-3,48.330893,-0.1254229, 77.456119,0.1588643],
+  Venus:  [181.979801, 58517.8156760,0.723329820,0.00677188,-4.7766e-5, 3.394662,-8.568e-4, 76.679920,-0.2780080,131.563703,0.0048746],
+  Earth:  [100.466457, 36000.7698278,1.000001018,0.01670863,-4.2037e-5, 0.0,      0.0,       0.0,       0.0,      102.937348,0.3225654],
+  Mars:   [355.433000, 19140.2993313,1.523679342,0.09340065, 9.0484e-5, 1.849726,-8.1477e-3,49.558093,-0.2949846,336.060234,0.4438898],
+  Jupiter:[ 34.351519,  3034.9056606,5.202603209,0.04849485, 1.6324e-4, 1.303270,-1.9877e-3,100.464407,0.1019613, 14.331207,0.2155209],
+  Saturn: [ 50.077444,  1222.1137943,9.554909192,0.05550825,-3.4664e-4, 2.488878,-3.7363e-3,113.665503,-0.2566722,93.057237,0.5665415],
+  Uranus: [314.055005,   429.8640561,19.21844606,0.04629590,-2.7337e-5, 0.773197, 7.744e-4,  74.005957, 0.0741431,173.005291,0.0893212],
+  Neptune:[304.348665,   219.8833092,30.11038687,0.00898809, 6.408e-6,  1.769953,-9.3082e-3,131.784057,0.0161858, 48.120276,0.0291866],
+  Pluto:  [238.928880,   145.207080, 39.48168677,0.24880766, 6.465e-5, 17.14175,-1.262e-2, 110.30347,-0.01588,  224.066760,0.01767]
+};
+
+function helio(name,T){
+  const el=OE[name];
+  const L=norm(el[0]+el[1]*T), a=el[2], e=el[3]+el[4]*T;
+  const i=el[5]+el[6]*T, O=norm(el[7]+el[8]*T), w=norm(el[9]+el[10]*T);
+  const omega=norm(w-O), M=norm(L-w);
+  const E=kepler(M,e);
+  const v=2*Math.atan2(Math.sqrt(1+e)*Math.sin(E/2),Math.sqrt(1-e)*Math.cos(E/2))*R2D;
+  const r=a*(1-e*Math.cos(E));
+  const u=norm(v+omega), ur=u*D2R, ir=i*D2R, Or=O*D2R;
+  const x=r*(Math.cos(Or)*Math.cos(ur)-Math.sin(Or)*Math.sin(ur)*Math.cos(ir));
+  const y=r*(Math.sin(Or)*Math.cos(ur)+Math.cos(Or)*Math.sin(ur)*Math.cos(ir));
+  const z=r*Math.sin(ur)*Math.sin(ir);
+  return{x,y,z};
+}
+
+function geoLon(name,T){
+  if(name==='Sun') return sunPos(T);
+  if(name==='Moon') return moonPos(T);
+  if(name==='NNode') return{lon:norm(125.04452-1934.136261*T+0.0020708*T*T),retro:true};
+  const p=helio(name,T), e=helio('Earth',T);
+  const dx=p.x-e.x, dy=p.y-e.y;
+  const lon=norm(Math.atan2(dy,dx)*R2D);
+  const p2=helio(name,T+0.5/36525), e2=helio('Earth',T+0.5/36525);
+  const lon2=norm(Math.atan2(p2.y-e2.y,p2.x-e2.x)*R2D);
+  let df=lon2-lon; if(df>180)df-=360; if(df<-180)df+=360;
+  return{lon,retro:df<0};
+}
+
+function calcASC(JD,lat,lon){
+  const T=(JD-2451545)/36525;
+  const GMST=norm(280.46061837+360.98564736629*(JD-2451545)+0.000387933*T*T-T*T*T/38710000);
+  const LST=norm(GMST+lon);
+  const eps=23.439291111-0.013004167*T;
+  const er=eps*D2R, lr=lat*D2R, LSTr=LST*D2R;
+  let MC=Math.atan2(Math.sin(LSTr),Math.cos(LSTr)*Math.cos(er))*R2D;
+  MC=norm(MC);
+  let md=MC-LST; if(md>180)md-=360; if(md<-180)md+=360;
+  if(Math.abs(md)>90) MC=norm(MC+180);
+  const y2=-Math.cos(LSTr), x2=Math.sin(er)*Math.tan(lr)+Math.cos(er)*Math.sin(LSTr);
+  let ASC=Math.atan2(y2,x2)*R2D; ASC=norm(ASC);
+  const ae=norm(LST+90); let ad=ASC-ae; if(ad>180)ad-=360; if(ad<-180)ad+=360;
+  if(Math.abs(ad)>90) ASC=norm(ASC+180);
+  return{ASC,MC};
+}
+
+function signInfo(lon){
+  const i=Math.floor(lon/30); return{sign:SIGNS[i],deg:lon-i*30,idx:i};
+}
+
+// ── SVG CHART ────────────────────────────────────────────────────────
+function pt(lon,asc,r){
+  const a=Math.PI-(lon-asc)*D2R;
+  return{x:230+r*Math.cos(a), y:230+r*Math.sin(a)};
+}
+
+function drawChart(planets,ASC,MC){
+  const cx=230,cy=230,Ro=218,Rzi=178,Rhi=138,Rp=120,Ra=95;
+  let s='';
+
+  // Zodiac ring segments
+  for(let i=0;i<12;i++){
+    const a1=Math.PI-(i*30-ASC)*D2R;
+    const a2=Math.PI-((i+1)*30-ASC)*D2R;
+    const col=EL_COL[SIGNS[i].e], stk=EL_STK[SIGNS[i].e];
+    const x1o=cx+Ro*Math.cos(a1),y1o=cy+Ro*Math.sin(a1);
+    const x2o=cx+Ro*Math.cos(a2),y2o=cy+Ro*Math.sin(a2);
+    const x1i=cx+Rzi*Math.cos(a1),y1i=cy+Rzi*Math.sin(a1);
+    const x2i=cx+Rzi*Math.cos(a2),y2i=cy+Rzi*Math.sin(a2);
+    s+=`<path d="M${x1o},${y1o} A${Ro},${Ro} 0 0,0 ${x2o},${y2o} L${x2i},${y2i} A${Rzi},${Rzi} 0 0,1 ${x1i},${y1i} Z" fill="${col}" stroke="${stk}" stroke-width="0.8"/>`;
+    // Sign symbol at midpoint
+    const am=Math.PI-((i*30+15)-ASC)*D2R;
+    const rm=(Ro+Rzi)/2;
+    s+=`<text x="${cx+rm*Math.cos(am)}" y="${cy+rm*Math.sin(am)}" text-anchor="middle" dominant-baseline="central" font-size="13" fill="#4a6a85">${SIGNS[i].s}</text>`;
+    // Divider lines
+    s+=`<line x1="${x1o}" y1="${y1o}" x2="${x1i}" y2="${y1i}" stroke="${stk}" stroke-width="0.8"/>`;
+  }
+
+  // Circles
+  s+=`<circle cx="${cx}" cy="${cy}" r="${Ro}" fill="none" stroke="#c8dcea" stroke-width="1"/>`;
+  s+=`<circle cx="${cx}" cy="${cy}" r="${Rzi}" fill="none" stroke="#c8dcea" stroke-width="1"/>`;
+  s+=`<circle cx="${cx}" cy="${cy}" r="${Rhi}" fill="none" stroke="#e4eff7" stroke-width="0.8"/>`;
+  s+=`<circle cx="${cx}" cy="${cy}" r="${Ra}" fill="white" stroke="#e4eff7" stroke-width="1"/>`;
+
+  // House dividers (Whole Sign — same as sign lines but inner)
+  const h1=Math.floor(ASC/30);
+  for(let i=0;i<12;i++){
+    const hLon=((h1+i)%12)*30;
+    const a=Math.PI-(hLon-ASC)*D2R;
+    const isAngle=(i===0||i===3||i===6||i===9);
+    const p1={x:cx+Rzi*Math.cos(a),y:cy+Rzi*Math.sin(a)};
+    const p2={x:cx+Rhi*Math.cos(a),y:cy+Rhi*Math.sin(a)};
+    s+=`<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="${isAngle?'#3b8fd4':'#c8dcea'}" stroke-width="${isAngle?1.5:0.7}"/>`;
+    // House numbers
+    const hm=norm(hLon+15);
+    const pm=pt(hm,ASC,(Rzi+Rhi)/2);
+    s+=`<text x="${pm.x}" y="${pm.y}" text-anchor="middle" dominant-baseline="central" font-size="8" fill="#90afc5">${i+1}</text>`;
+  }
+
+  // ASC–DSC line
+  const a1p=pt(ASC,ASC,Rzi); const d1p=pt(norm(ASC+180),ASC,Rzi);
+  s+=`<line x1="${a1p.x}" y1="${a1p.y}" x2="${d1p.x}" y2="${d1p.y}" stroke="#1a2533" stroke-width="1.5" opacity="0.4"/>`;
+  // MC–IC line
+  const mc1=pt(MC,ASC,Rzi); const ic1=pt(norm(MC+180),ASC,Rzi);
+  s+=`<line x1="${mc1.x}" y1="${mc1.y}" x2="${ic1.x}" y2="${ic1.y}" stroke="#4a6a85" stroke-width="1" stroke-dasharray="3,3" opacity="0.4"/>`;
+
+  // Axis labels
+  const al=pt(ASC,ASC,Rzi-13); s+=`<text x="${al.x}" y="${al.y}" text-anchor="middle" dominant-baseline="central" font-size="7" font-weight="bold" fill="#1a2533">ASC</text>`;
+  const dl=pt(norm(ASC+180),ASC,Rzi-13); s+=`<text x="${dl.x}" y="${dl.y}" text-anchor="middle" dominant-baseline="central" font-size="7" font-weight="bold" fill="#1a2533">DSC</text>`;
+  const ml=pt(MC,ASC,Rzi-13); s+=`<text x="${ml.x}" y="${ml.y}" text-anchor="middle" dominant-baseline="central" font-size="7" font-weight="bold" fill="#4a6a85">MC</text>`;
+  const il=pt(norm(MC+180),ASC,Rzi-13); s+=`<text x="${il.x}" y="${il.y}" text-anchor="middle" dominant-baseline="central" font-size="7" fill="#90afc5">IC</text>`;
+
+  // Aspect lines in center
+  const mainP=planets.filter(p=>['Sun','Moon','Mercury','Venus','Mars','Jupiter','Saturn'].includes(p.n));
+  for(let i=0;i<mainP.length;i++){
+    for(let j=i+1;j<mainP.length;j++){
+      let diff=Math.abs(mainP[i].lon-mainP[j].lon);
+      if(diff>180)diff=360-diff;
+      for(const asp of ASPECTS){
+        if(Math.abs(diff-asp.d)<=asp.orb){
+          const pa=pt(mainP[i].lon,ASC,Ra-4), pb=pt(mainP[j].lon,ASC,Ra-4);
+          s+=`<line x1="${pa.x}" y1="${pa.y}" x2="${pb.x}" y2="${pb.y}" stroke="${asp.c}" stroke-width="0.7" opacity="0.45"/>`;
+          break;
+        }
+      }
+    }
+  }
+
+  // Planet positions — stagger overlapping
+  const sorted=[...planets].sort((a,b)=>a.lon-b.lon);
+  const offsets=new Array(planets.length).fill(0);
+  for(let i=0;i<sorted.length;i++){
+    for(let j=i+1;j<sorted.length;j++){
+      let diff=Math.abs(sorted[i].lon-sorted[j].lon);
+      if(diff>180)diff=360-diff;
+      if(diff<7) offsets[j]=(offsets[j]||0)+14;
+    }
+  }
+
+  for(let i=0;i<sorted.length;i++){
+    const p=sorted[i];
+    const pd=PDATA.find(x=>x.n===p.n);
+    const radius=Rp-offsets[i];
+    const pp=pt(p.lon,ASC,radius);
+    s+=`<circle cx="${pp.x}" cy="${pp.y}" r="10" fill="white" stroke="${pd.c}" stroke-width="1.5"/>`;
+    s+=`<text x="${pp.x}" y="${pp.y}" text-anchor="middle" dominant-baseline="central" font-size="11" fill="${pd.c}">${pd.s}</text>`;
+  }
+
+  return s;
+}
+
+// ── MAIN FUNCTION ────────────────────────────────────────────────────
+function calculate(){
+  const day=parseInt(document.getElementById('bDay').value)||0;
+  const mon=parseInt(document.getElementById('bMonth').value)||0;
+  const yr=parseInt(document.getElementById('bYear').value)||0;
+  const tv=document.getElementById('bTime').value;
+  const cv=document.getElementById('bCity').value.trim().toLowerCase();
+  document.getElementById('cityErr').style.display='none';
+  if(!day||!mon||!yr||!tv){alert('Please enter a complete birth date and time.');return;}
+  if(yr<1800||yr>2099){alert('Please enter a valid year between 1800 and 2099.');return;}
+  const city=CITIES[cv];
+  if(!city){document.getElementById('cityErr').style.display='block';return;}
+
+  // Build ISO string: YYYY-MM-DDTHH:MM — explicit, no locale ambiguity
+  const pad=n=>String(n).padStart(2,'0');
+  const dv=`${yr}-${pad(mon)}-${pad(day)}`;
+  // Local → UTC
+  const dt=DateTime.fromISO(`${dv}T${tv}`,{zone:city.z});
+  const ut=dt.toUTC();
+  const JD=jd(ut.year,ut.month,ut.day,ut.hour+ut.minute/60+ut.second/3600);
+  const T=(JD-2451545)/36525;
+
+  // Planet positions
+  const planets=PDATA.map(pd=>({n:pd.n,...geoLon(pd.n,T)}));
+
+  // ASC & MC
+  const{ASC,MC}=calcASC(JD,city.la,city.lo);
+
+  // Whole Sign houses — House 1 = sign containing ASC
+  const h1Sign=Math.floor(ASC/30);
+
+  // Big Three
+  const sun=planets.find(p=>p.n==='Sun');
+  const moon=planets.find(p=>p.n==='Moon');
+  const si=signInfo(sun.lon), mi=signInfo(moon.lon), ai=signInfo(ASC);
+  document.getElementById('bigThree').innerHTML=`
+    <div class="big-three-item"><div class="big-three-label">☉ Sun Sign</div>
+      <div class="big-three-value">${si.sign.s} ${si.sign.n}</div><div class="big-three-deg">${si.deg.toFixed(1)}°</div></div>
+    <div class="big-three-item"><div class="big-three-label">☽ Moon Sign</div>
+      <div class="big-three-value">${mi.sign.s} ${mi.sign.n}</div><div class="big-three-deg">${mi.deg.toFixed(1)}°</div></div>
+    <div class="big-three-item" style="border-top-color:#1a2533"><div class="big-three-label">↑ Rising Sign</div>
+      <div class="big-three-value">${ai.sign.s} ${ai.sign.n}</div><div class="big-three-deg">${ai.deg.toFixed(1)}°</div></div>`;
+
+  // SVG Chart
+  document.getElementById('chartSVG').innerHTML=drawChart(planets,ASC,MC);
+
+  // Planet Table
+  let th=`<tr><th>Planet</th><th>Sign</th><th>Deg°</th><th>House</th></tr>`;
+  for(const p of planets){
+    const pd=PDATA.find(x=>x.n===p.n);
+    const si2=signInfo(p.lon);
+    const house=((si2.idx-h1Sign+12)%12)+1;
+    th+=`<tr><td><span style="color:${pd.c};font-size:14px">${pd.s}</span> ${p.n}</td>
+      <td><span class="sign-pill">${si2.sign.s} ${si2.sign.n}</span>${p.retro?'<span class="retro">℞</span>':''}</td>
+      <td>${si2.deg.toFixed(1)}°</td><td>${house}</td></tr>`;
+  }
+  // Add ASC & MC rows
+  const ascI=signInfo(ASC), mcI=signInfo(MC);
+  th+=`<tr><td><strong>↑ ASC</strong></td><td><span class="sign-pill">${ascI.sign.s} ${ascI.sign.n}</span></td><td>${ascI.deg.toFixed(1)}°</td><td>—</td></tr>`;
+  th+=`<tr><td><strong>MC</strong></td><td><span class="sign-pill">${mcI.sign.s} ${mcI.sign.n}</span></td><td>${mcI.deg.toFixed(1)}°</td><td>—</td></tr>`;
+  document.getElementById('ptable').innerHTML=th;
+
+  // Aspects
+  const aspPlanets=planets.filter(p=>p.n!=='NNode');
+  const found=[];
+  for(let i=0;i<aspPlanets.length;i++){
+    for(let j=i+1;j<aspPlanets.length;j++){
+      let diff=Math.abs(aspPlanets[i].lon-aspPlanets[j].lon);
+      if(diff>180)diff=360-diff;
+      for(const asp of ASPECTS){
+        const orb=Math.abs(diff-asp.d);
+        if(orb<=asp.orb){found.push({p1:aspPlanets[i],p2:aspPlanets[j],asp,orb});break;}
+      }
+    }
+  }
+  const aspDiv=document.getElementById('aspDiv');
+  if(!found.length){aspDiv.innerHTML='<div style="color:#90afc5;font-size:13px;padding:6px 0">No major aspects found.</div>';}
+  else{
+    aspDiv.innerHTML=found.sort((a,b)=>a.orb-b.orb).map(a=>{
+      const p1d=PDATA.find(x=>x.n===a.p1.n), p2d=PDATA.find(x=>x.n===a.p2.n);
+      return`<div class="asp-row">
+        <div class="asp-dot" style="background:${a.asp.c}"></div>
+        <span style="color:${p1d.c}">${p1d.s}</span>
+        <span style="font-size:11px;color:#4a6a85">${a.p1.n}</span>
+        <strong style="color:${a.asp.c};font-size:11px">${a.asp.n}</strong>
+        <span style="color:${p2d.c}">${p2d.s}</span>
+        <span style="font-size:11px;color:#4a6a85">${a.p2.n}</span>
+        <span class="asp-orb">${a.orb.toFixed(1)}°</span>
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('results').style.display='block';
+  document.getElementById('results').scrollIntoView({behavior:'smooth'});
+}
+
+// Populate day dropdown
+(function(){
+  const dayEl=document.getElementById('bDay');
+  const monEl=document.getElementById('bMonth');
+  for(let d=1;d<=31;d++){const o=document.createElement('option');o.value=d;o.textContent=String(d).padStart(2,'0');dayEl.appendChild(o);}
+  const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  months.forEach((m,i)=>{const o=document.createElement('option');o.value=i+1;o.textContent=m;monEl.appendChild(o);});
+  // Defaults: 30 years ago
+  const def=new Date();
+  dayEl.value=def.getDate();
+  monEl.value=def.getMonth()+1;
+  document.getElementById('bYear').value=def.getFullYear()-30;
+  document.getElementById('bTime').value='12:00';
+})();
+</script>
+</body>
+</html>
